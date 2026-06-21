@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node_Notes</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0B0F1A',
+                        panel: '#141B2D',
+                        burgundy: '#9A1750',
+                        purpleAccent: '#6B2FA0'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 26, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Not Şifreleme/Açma Efektleri */
+        .secret-note-container {
+            transition: all 0.5s ease;
+        }
+        .secret-note {
+            filter: blur(8px);
+            transition: filter 0.6s cubic-bezier(0.4, 0, 0.2, 1), color 0.6s;
+            cursor: pointer;
+            user-select: none;
+        }
+        .secret-note.revealed {
+            filter: blur(0px);
+            cursor: default;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(107, 47, 160, 0.3);
+            user-select: text;
+        }
+        .reveal-icon { transition: transform 0.4s ease; }
+        .revealed-parent .reveal-icon { transform: rotateY(180deg); color: #10B981; }
+
+        /* Toast Animasyonu */
+        @keyframes slideDown { 0% { transform: translateY(-100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .toast-enter { animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-navy flex justify-center h-screen overflow-hidden text-gray-200 selection:bg-purpleAccent selection:text-white">
+
+    <div id="toast-container" class="absolute top-5 left-0 w-full flex flex-col items-center z-50 pointer-events-none space-y-2 px-4"></div>
+
+    <div class="w-full max-w-md h-full relative flex flex-col overflow-hidden bg-[#0a0d17] shadow-2xl">
+        
+        <div class="absolute top-0 left-0 w-64 h-64 bg-purpleAccent rounded-full blur-[100px] opacity-20 -ml-20 -mt-20 pointer-events-none"></div>
+        
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-28 p-5 space-y-6">
+            
+            <header class="flex justify-between items-center mb-2">
+                <div class="flex items-center">
+                    <i class="fa-solid fa-server text-purpleAccent mr-2 text-sm"></i>
+                    <h1 class="text-sm font-mono tracking-widest text-gray-300">NODE_FRIDGE_<span class="text-white font-bold">SYNC</span></h1>
+                </div>
+                <span class="text-[9px] bg-purple-500/20 text-purple-300 px-2 py-1 rounded-md border border-purple-500/30 font-mono animate-pulse">256-BIT AES</span>
+            </header>
+
+            <div class="glass-panel p-5 border border-white/10 relative overflow-hidden group focus-within:border-purpleAccent/50 transition-colors">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purpleAccent to-burgundy opacity-50"></div>
+                
+                <textarea id="noteInput" rows="3" placeholder="Sisteme şifreli bir not bırak..." oninput="updateCharCount()" maxlength="250" class="w-full bg-transparent border-none p-2 text-white placeholder-gray-600 focus:outline-none focus:ring-0 resize-none text-sm font-medium"></textarea>
+                
+                <div class="flex justify-between items-center mt-2 border-t border-white/5 pt-3">
+                    <span id="charCount" class="text-xs text-gray-600 font-mono">0 / 250</span>
+                    <button id="sendBtn" onclick="sendNote()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-purpleAccent to-purple-800 text-white font-semibold text-sm hover:shadow-[0_0_15px_rgba(107,47,160,0.5)] active:scale-95 transition-all flex items-center">
+                        <i id="sendIcon" class="fa-solid fa-lock mr-2"></i><span id="sendText">Şifrele</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+                <i class="fa-solid fa-database text-xs text-gray-500"></i>
+                <h2 class="text-xs font-mono tracking-widest text-gray-500 uppercase">Kayıtlı Paketler</h2>
+                <div class="h-[1px] flex-1 bg-white/5 ml-2"></div>
+            </div>
+
+            <div id="notesContainer" class="space-y-4">
+                </div>
+        </main>
+
+        <nav class="absolute bottom-0 w-full glass-nav pb-6 pt-4 px-6 rounded-t-3xl flex justify-between items-center z-40">
+            <a href="/" class="flex flex-col items-center text-gray-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-house text-xl mb-1"></i>
+            </a>
+            <a href="/yemek" class="flex flex-col items-center text-gray-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-utensils text-xl mb-1"></i>
+            </a>
+            
+            <a href="/notlar" class="relative -top-5 w-14 h-14 bg-gradient-to-tr from-purpleAccent to-burgundy rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(107,47,160,0.5)] border-4 border-[#0a0d17] scale-105">
+                <i class="fa-solid fa-pen text-white text-xl"></i>
+            </a>
+            
+            <a href="/istatistik" class="flex flex-col items-center text-gray-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-chart-line text-xl mb-1"></i>
+            </a>
+            <a href="/ayarlar" class="flex flex-col items-center text-gray-500 hover:text-white transition-colors">
+                <i class="fa-solid fa-gear text-xl mb-1"></i>
+            </a>
+        </nav>
+    </div>
+
+    <script>
+        // Sayfa yüklendiğinde notları çek
+        window.onload = loadNotes;
+
+        // Özel Toast Bildirim Sistemi
+        function showToast(message, iconName = 'check-circle', color = '#6B2FA0') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            toast.className = `glass-panel flex items-center p-4 rounded-2xl w-full max-w-sm toast-enter border-l-4 shadow-lg`;
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `
+                <i class="fa-solid fa-${iconName} text-xl mr-3" style="color: ${color}"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-white">${message}</p>
+                    <p class="text-[10px] text-gray-400">Sunucu ile senkronize edildi.</p>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideDown 0.4s reverse forwards';
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
+        }
+
+        // Karakter sayacını güncelle
+        function updateCharCount() {
+            const input = document.getElementById('noteInput');
+            const count = input.value.length;
+            const counterElement = document.getElementById('charCount');
+            counterElement.innerText = `${count} / 250`;
+            
+            if (count > 200) counterElement.classList.add('text-burgundy');
+            else counterElement.classList.remove('text-burgundy');
+        }
+
+        // Veritabanından notları yükle
+        async function loadNotes() {
+            try {
+                const response = await fetch('/api/notes');
+                const notes = await response.json();
+                const container = document.getElementById('notesContainer');
+                container.innerHTML = '';
+                
+                if (notes.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center p-10 opacity-50">
+                            <i class="fa-regular fa-folder-open text-4xl mb-3 text-gray-500"></i>
+                            <p class="text-sm font-mono text-gray-500">Kayıtlı veri bulunamadı.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                notes.forEach((note, index) => {
+                    // Her nota gecikmeli bir giriş animasyonu (stagger effect) ekleyebiliriz
+                    const animationDelay = index * 0.1;
+                    
+                    container.innerHTML += `
+                    <div class="secret-note-container glass-panel p-5 relative border-l-2 border-l-transparent hover:border-l-purpleAccent transition-colors animate-[popIn_0.4s_ease_forwards]" style="animation-delay: ${animationDelay}s; opacity: 0; animation-fill-mode: forwards;">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="bg-black/30 px-2 py-1 rounded flex items-center">
+                                <i class="fa-solid fa-lock text-[10px] text-burgundy mr-2 reveal-icon transition-colors"></i>
+                                <span class="text-[10px] text-gray-400 font-mono">PACKET_${note.time.replace(/[: -.]/g, '').substring(0,8)}</span>
+                            </div>
+                            <span class="text-[10px] text-gray-500 font-mono tracking-wider">${note.time}</span>
+                        </div>
+                        
+                        <p class="text-gray-300 text-[15px] leading-relaxed secret-note" onclick="decryptNote(this)">
+                            ${note.content.replace(/\n/g, '<br>')}
+                        </p>
+                        
+                        <div class="decrypt-hint text-center text-[9px] text-gray-500 mt-3 font-mono tracking-widest uppercase opacity-40">
+                            <i class="fa-solid fa-fingerprint mr-1"></i> Şifreyi Çözmek İçin Dokun
+                        </div>
+                    </div>`;
+                });
+            } catch (error) {
+                showToast("Notlar yüklenirken hata oluştu", "triangle-exclamation", "#ef4444");
+            }
+        }
+
+        // Tıklanınca notun kilidini açan animasyon fonksiyonu
+        function decryptNote(element) {
+            if(element.classList.contains('revealed')) return; // Zaten açıksa işlem yapma
+            
+            const parent = element.closest('.secret-note-container');
+            const hint = parent.querySelector('.decrypt-hint');
+            const icon = parent.querySelector('.reveal-icon');
+            
+            // Konteyner class'ını güncelle (ikon animasyonu için)
+            parent.classList.add('revealed-parent');
+            
+            // İkonu kilitten açık kilide çevir
+            icon.classList.remove('fa-lock', 'text-burgundy');
+            icon.classList.add('fa-lock-open', 'text-green-400');
+            
+            // Yazıyı belirginleştir
+            element.classList.add('revealed');
+            
+            // İpucu yazısını gizle
+            hint.style.opacity = '0';
+            setTimeout(() => hint.style.display = 'none', 300);
+        }
+
+        // Yeni not gönder
+        async function sendNote() {
+            const input = document.getElementById('noteInput');
+            const btn = document.getElementById('sendBtn');
+            const btnText = document.getElementById('sendText');
+            const btnIcon = document.getElementById('sendIcon');
+            
+            if(!input.value.trim()) {
+                showToast("Boş paket gönderilemez!", "circle-xmark", "#ef4444");
+                return;
+            }
+
+            // Yükleniyor durumu (Hacker efekti)
+            btn.disabled = true;
+            btnText.innerText = 'İşleniyor...';
+            btnIcon.className = 'fa-solid fa-gear fa-spin mr-2';
+            btn.classList.add('opacity-80');
+
+            try {
+                const response = await fetch('/api/notes', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ content: input.value }) 
+                });
+                
+                if(response.ok) {
+                    input.value = '';
+                    updateCharCount();
+                    showToast("Not şifrelendi ve kaydedildi", "shield-check", "#10B981");
+                    await loadNotes();
+                }
+            } catch (error) {
+                showToast("Bağlantı hatası!", "wifi", "#ef4444");
+            } finally {
+                // Butonu eski haline getir
+                btn.disabled = false;
+                btnText.innerText = 'Şifrele';
+                btnIcon.className = 'fa-solid fa-lock mr-2';
+                btn.classList.remove('opacity-80');
+            }
+        }
+
+        // Sayfa yüklendiğinde kartların tatlı bir şekilde ekrana girmesi için keyframe
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes popIn { 0% { transform: translateY(10px) scale(0.98); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }`;
+        document.head.appendChild(style);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0B0F1A">
+    <title>Node_Randomizer</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0B0F1A',
+                        panel: '#141B2D',
+                        burgundy: '#9A1750',
+                        purpleAccent: '#6B2FA0',
+                        neonGreen: '#00FA9A',
+                        cyberBlue: '#00E5FF',
+                        brandGetir: '#5D3EBD',
+                        brandYemeksepeti: '#EA004B',
+                        brandTrendyol: '#F27A1A'
+                    },
+                    backgroundImage: {
+                        'cyber-grid': "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNykiLz48L3N2Zz4=')"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Premium Cam Efekti */
+        .glass-panel {
+            background: rgba(20, 27, 45, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255,255,255,0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 26, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+        }
+
+        /* SPA ve Yükleme Animasyonları */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(15px); filter: blur(4px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
+
+        /* Rulet Yazı Bulanıklığı (Hız efekti) */
+        .spin-blur { animation: textBlur 0.1s infinite alternate; }
+        @keyframes textBlur {
+            0% { filter: blur(0px); transform: translateY(-2px); opacity: 0.8; }
+            100% { filter: blur(2px); transform: translateY(2px); opacity: 1; }
+        }
+
+        /* Kazanma Animasyonu */
+        .pop-in { animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; filter: blur(4px); }
+            50% { transform: scale(1.05); opacity: 1; filter: blur(0px); }
+            100% { transform: scale(1); opacity: 1; filter: blur(0px); }
+        }
+
+        /* Radar Tarama Ekranı */
+        .radar-scan {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, transparent 70%, rgba(0, 229, 255, 0.4) 100%);
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-navy flex justify-center h-screen overflow-hidden text-gray-200 selection:bg-purpleAccent selection:text-white relative bg-cyber-grid bg-[length:20px_20px]">
+
+    <div class="w-full max-w-md h-full relative flex flex-col overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10">
+        
+        <div class="absolute top-0 right-0 w-72 h-72 bg-cyberBlue rounded-full blur-[120px] opacity-10 -mr-20 -mt-20 pointer-events-none transition-colors duration-700" id="ambient-light-1"></div>
+        <div class="absolute bottom-1/3 left-0 w-64 h-64 bg-purpleAccent rounded-full blur-[120px] opacity-10 pointer-events-none transition-colors duration-700" id="ambient-light-2"></div>
+
+        <main id="app-main" class="flex-1 flex flex-col items-center justify-start p-6 pt-10 pb-32 relative z-10 overflow-y-auto no-scrollbar fade-in">
+            
+            <header class="w-full flex justify-between items-center mb-8 border-b border-white/5 pb-4">
+                <div class="text-xs font-mono tracking-widest text-cyberBlue bg-cyberBlue/10 px-3 py-1.5 rounded-lg border border-cyberBlue/30 flex items-center shadow-[0_0_10px_rgba(0,229,255,0.2)]">
+                    <i class="fa-solid fa-microchip mr-2 animate-pulse"></i>ALGORİTMA: AÇLIK
+                </div>
+                <div class="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
+                    <i class="fa-solid fa-utensils text-gray-400 text-xs"></i>
+                </div>
+            </header>
+
+            <div id="roulette-container" class="glass-panel w-full aspect-square max-w-[280px] rounded-[2.5rem] flex flex-col items-center justify-center mb-8 relative border-4 border-white/5 shadow-[0_15px_40px_rgba(0,0,0,0.5)] transition-all duration-500 overflow-hidden group">
+                
+                <div id="radar" class="radar-scan"></div>
+                <div class="absolute inset-0 border-2 border-white/5 rounded-[2.5rem] m-2 pointer-events-none"></div>
+                
+                <div class="relative z-10 flex flex-col items-center w-full">
+                    <div id="icon-container" class="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mb-6 shadow-inner transition-all duration-300">
+                        <i class="fa-solid fa-crosshairs text-3xl text-gray-500 transition-all duration-300" id="foodIcon"></i>
+                    </div>
+                    
+                    <h2 id="foodResult" class="text-2xl sm:text-3xl font-black text-white px-4 text-center leading-tight drop-shadow-md min-h-[80px] flex items-center justify-center w-full transition-all">
+                        Ne Yesek?
+                    </h2>
+                </div>
+            </div>
+
+            <button id="spinBtn" onclick="startRoulette()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-cyberBlue/80 to-purpleAccent/80 text-white font-bold text-lg shadow-[0_10px_25px_rgba(0,229,255,0.3)] hover:shadow-[0_15px_30px_rgba(107,47,160,0.4)] active:scale-[0.96] transition-all border border-white/20 mb-6">
+                <i class="fa-solid fa-rotate-right mr-2"></i>Karar Ver
+            </button>
+
+            <div id="action-buttons" class="w-full space-y-3 hidden opacity-0 transition-opacity">
+                <div class="flex items-center justify-center gap-2 mb-4">
+                    <div class="h-[1px] flex-1 bg-gradient-to-r from-transparent to-white/20"></div>
+                    <p class="text-center text-[10px] font-mono text-gray-400 uppercase tracking-widest">Hızlı Sipariş Portalı</p>
+                    <div class="h-[1px] flex-1 bg-gradient-to-l from-transparent to-white/20"></div>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <a href="https://www.yemeksepeti.com/" target="_blank" onclick="hapticClick(20)" class="flex items-center p-3.5 rounded-xl bg-white/5 border border-brandYemeksepeti/30 hover:bg-brandYemeksepeti/10 active:scale-95 transition-all group">
+                        <div class="w-10 h-10 rounded-lg bg-brandYemeksepeti/20 flex items-center justify-center mr-4 group-hover:shadow-[0_0_15px_rgba(234,0,75,0.4)] transition-shadow">
+                            <i class="fa-solid fa-motorcycle text-brandYemeksepeti text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-white text-sm">Yemeksepeti</h3>
+                            <p class="text-[10px] text-gray-400 font-mono">Platformu Aç</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-brandYemeksepeti/50 text-xs"></i>
+                    </a>
+
+                    <a href="https://getir.com/yemek/" target="_blank" onclick="hapticClick(20)" class="flex items-center p-3.5 rounded-xl bg-white/5 border border-brandGetir/30 hover:bg-brandGetir/10 active:scale-95 transition-all group">
+                        <div class="w-10 h-10 rounded-lg bg-brandGetir/20 flex items-center justify-center mr-4 group-hover:shadow-[0_0_15px_rgba(93,62,189,0.4)] transition-shadow">
+                            <i class="fa-solid fa-bag-shopping text-brandGetir text-lg"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-bold text-white text-sm">GetirYemek</h3>
+                            <p class="text-[10px] text-gray-400 font-mono">Platformu Aç</p>
+                        </div>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-brandGetir/50 text-xs"></i>
+                    </a>
+
+                   
+                </div>
+            </div>
+        </main>
+
+        <nav class="absolute bottom-0 w-full glass-nav pt-4 px-6 rounded-t-3xl flex justify-between items-center z-40" id="bottom-nav">
+            <a href="/" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-house text-xl mb-1"></i></a>
+            
+            <a href="/yemek" class="spa-link flex flex-col items-center text-purpleAccent scale-110 drop-shadow-[0_0_10px_rgba(107,47,160,0.5)] transition-transform"><i class="fa-solid fa-utensils text-xl mb-1"></i></a>
+            
+            <a href="/notlar" class="spa-link relative -top-5 w-14 h-14 bg-gradient-to-tr from-purpleAccent to-burgundy rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(107,47,160,0.5)] border-[3px] border-[#0a0d17] hover:scale-105 transition-transform active:scale-95"><i class="fa-solid fa-pen text-white text-xl drop-shadow-md"></i></a>
+            <a href="/istatistik" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-chart-line text-xl mb-1"></i></a>
+            <a href="/ayarlar" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-gear text-xl mb-1"></i></a>
+        </nav>
+    </div>
+
+    <script>
+        // Haptic Feedback (Titreşim Motoru)
+        function hapticClick(duration = 40) { if (navigator.vibrate) navigator.vibrate(duration); }
+
+        // ÖĞRENCİ İŞİ KAPSAMLI YEMEK VERİTABANI
+        const foods = [
+            "Zurna Dürüm (Bol Soslu)", 
+            "Hatay Usulü Tavuk Döner", 
+            "Çift Lavaş Çiğ Köfte", 
+            "Bol Kaşarlı Tost", 
+            "Patso (Sosisli & Patatesli)", 
+            "Tavuklu Pilav + Ayran", 
+            "Islak Hamburger", 
+            "Öğrenci İşi Makarna", 
+            "Kıymalı / Kaşarlı Pide", 
+            "Lahmacun (Çıtır Çıtır)", 
+            "Yarım Ekmek Köfte", 
+            "İzmir Kumru", 
+            "Mersin Tantuni", 
+            "Fırınlanmış Kumpir", 
+            "Bol Malzemeli Pizza",
+            "Sıcak Gözleme",
+            "Menemen (Soğanlı/Soğansız?)",
+            "Ev Yapımı Mantı (Yoğurtlu)",
+            "Noodle / Ramen Gecesi",
+            "Tatlı Krizine Gir! (Waffle/Sufle)"
+        ];
+
+        let isSpinning = false;
+
+        function startRoulette() {
+            if(isSpinning) return;
+            isSpinning = true;
+
+            const resultText = document.getElementById('foodResult');
+            const icon = document.getElementById('foodIcon');
+            const iconBox = document.getElementById('icon-container');
+            const btn = document.getElementById('spinBtn');
+            const container = document.getElementById('roulette-container');
+            const radar = document.getElementById('radar');
+            const actionBtns = document.getElementById('action-buttons');
+            
+            // Çevre ışıklarını Siber Mavi yap
+            document.getElementById('ambient-light-1').className = "absolute top-0 right-0 w-72 h-72 bg-cyberBlue rounded-full blur-[120px] opacity-20 pointer-events-none transition-colors duration-300";
+            document.getElementById('ambient-light-2').className = "absolute bottom-1/3 left-0 w-64 h-64 bg-cyberBlue rounded-full blur-[120px] opacity-10 pointer-events-none transition-colors duration-300";
+
+            // UI'ı işlem moduna al
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin mr-2"></i> Taranıyor...';
+            btn.classList.add('opacity-50', 'scale-[0.98]', 'pointer-events-none');
+            
+            iconBox.classList.add('bg-cyberBlue/20', 'border-cyberBlue/50', 'shadow-[0_0_15px_rgba(0,229,255,0.4)]');
+            icon.className = "fa-solid fa-satellite-dish text-3xl text-cyberBlue animate-pulse";
+            
+            container.classList.add('border-cyberBlue/50', 'shadow-[0_0_40px_rgba(0,229,255,0.2)]');
+            radar.style.display = 'block'; 
+            resultText.classList.add('spin-blur', 'text-cyberBlue'); 
+            
+            // Sipariş butonlarını gizle
+            actionBtns.classList.add('hidden');
+            actionBtns.classList.remove('pop-in');
+
+            // Fiziksel rulet matematiği
+            let currentDelay = 30; // Çok hızlı başlar
+            let spinsCount = 0;
+            const maxSpins = 40; // Toplam dönüş
+
+            function spin() {
+                // Rastgele yemek seç ve her değişimde ufak titreşim ver (çark tıkırtısı)
+                resultText.innerText = foods[Math.floor(Math.random() * foods.length)];
+                hapticClick(15); 
+                spinsCount++;
+
+                if (spinsCount < maxSpins) {
+                    currentDelay += Math.floor(spinsCount / 2.5); // Yavaşlama formülü
+                    setTimeout(spin, currentDelay);
+                } else {
+                    // ANİMASYON BİTİŞİ - KAZANAN SEÇİLDİ
+                    isSpinning = false;
+                    hapticClick([50, 50, 150]); // Kazanma titreşimi
+                    const winner = foods[Math.floor(Math.random() * foods.length)];
+                    
+                    // Görsel final temizliği ve Neon Yeşile geçiş
+                    resultText.classList.remove('spin-blur', 'text-cyberBlue');
+                    radar.style.display = 'none';
+                    
+                    document.getElementById('ambient-light-1').className = "absolute top-0 right-0 w-72 h-72 bg-neonGreen rounded-full blur-[120px] opacity-20 pointer-events-none transition-colors duration-700";
+                    document.getElementById('ambient-light-2').className = "absolute bottom-1/3 left-0 w-64 h-64 bg-neonGreen rounded-full blur-[120px] opacity-10 pointer-events-none transition-colors duration-700";
+
+                    container.classList.remove('border-cyberBlue/50', 'shadow-[0_0_40px_rgba(0,229,255,0.2)]');
+                    container.classList.add('shadow-[0_0_50px_rgba(0,250,154,0.3)]', 'border-neonGreen/40');
+                    
+                    iconBox.className = "w-16 h-16 rounded-2xl bg-neonGreen/20 flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(0,250,154,0.4)] transition-all duration-300 border border-neonGreen/50";
+                    icon.className = "fa-solid fa-check-double text-3xl text-neonGreen";
+                    
+                    resultText.innerHTML = `<span class="text-neonGreen drop-shadow-[0_0_10px_rgba(0,250,154,0.6)]">${winner}</span>`;
+                    resultText.parentElement.classList.remove('pop-in'); 
+                    void resultText.parentElement.offsetWidth; 
+                    resultText.parentElement.classList.add('pop-in');
+                    
+                    btn.innerHTML = '<i class="fa-solid fa-rotate-right mr-2"></i> Yeniden Çevir';
+                    btn.classList.remove('opacity-50', 'scale-[0.98]', 'pointer-events-none');
+                    btn.className = "w-full py-4 rounded-2xl bg-gradient-to-r from-neonGreen/80 to-emerald-600/80 text-[#0B0F1A] font-black text-lg shadow-[0_10px_25px_rgba(0,250,154,0.3)] hover:shadow-[0_15px_30px_rgba(0,250,154,0.5)] active:scale-[0.96] transition-all mb-6";
+
+                    // Sipariş platformu butonlarını göster
+                    setTimeout(() => {
+                        actionBtns.classList.remove('hidden');
+                        actionBtns.style.opacity = '1';
+                        actionBtns.classList.add('pop-in');
+                        
+                        // Ekranı hafifçe aşağı kaydırarak sipariş butonlarını göster
+                        document.getElementById('app-main').scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }, 500);
+
+                    // Arka plana sessizce veri gönder
+                    try {
+                        fetch('/api/trigger', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: `Yemek Ruleti: ${winner}` })
+                        });
+                    } catch(e) {}
+                }
+            }
+            setTimeout(spin, currentDelay);
+        }
+    </script>
+</body>
+</html>

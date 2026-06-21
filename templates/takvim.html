@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0B0F1A">
+    <title>Node_Scheduler</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0B0F1A',
+                        panel: '#141B2D',
+                        burgundy: '#9A1750',
+                        purpleAccent: '#6B2FA0',
+                        neonGreen: '#00FA9A',
+                        coinGold: '#F59E0B',
+                        cyberBlue: '#00E5FF'
+                    },
+                    backgroundImage: {
+                        'cyber-grid': "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNykiLz48L3N2Zz4=')"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        .glass-panel {
+            background: rgba(20, 27, 45, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255,255,255,0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 26, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+        }
+
+        @keyframes slideDown { 0% { transform: translateY(-100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .toast-enter { animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Input & Form Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator, 
+        input[type="time"]::-webkit-calendar-picker-indicator { 
+            filter: invert(1) opacity(0.6); 
+            cursor: pointer; 
+        }
+        
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        
+        /* SPA Animasyonu */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(15px); filter: blur(4px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
+
+        /* Kart Animasyonları */
+        .card-enter { animation: cardPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; opacity: 0; transform: scale(0.95); }
+        @keyframes cardPop { to { opacity: 1; transform: scale(1); } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-navy flex justify-center h-screen overflow-hidden text-gray-200 selection:bg-purpleAccent selection:text-white relative bg-cyber-grid bg-[length:20px_20px]">
+
+    <div id="toast-container" class="absolute top-5 left-0 w-full flex flex-col items-center z-[100] pointer-events-none space-y-2 px-4"></div>
+
+    <div class="w-full max-w-md h-full relative flex flex-col overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10">
+        
+        <div class="absolute top-0 right-0 w-72 h-72 bg-purpleAccent rounded-full blur-[120px] opacity-10 -mr-20 -mt-20 pointer-events-none"></div>
+        <div class="absolute bottom-1/3 left-0 w-72 h-72 bg-cyberBlue rounded-full blur-[120px] opacity-5 pointer-events-none"></div>
+
+        <main id="app-main" class="flex-1 overflow-y-auto no-scrollbar pb-36 p-5 space-y-6 fade-in relative z-10">
+            
+            <header class="flex items-center justify-between mb-2 border-b border-white/5 pb-4">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full border border-cyberBlue/30 flex items-center justify-center bg-cyberBlue/10 mr-3 shadow-[0_0_15px_rgba(0,229,255,0.2)]">
+                        <i class="fa-solid fa-calendar-day text-cyberBlue"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white tracking-widest uppercase">Task<span class="text-cyberBlue">.scheduler</span></h1>
+                        <p class="text-[9px] text-neonGreen font-mono flex items-center mt-0.5">
+                            <span class="w-1.5 h-1.5 bg-neonGreen rounded-full mr-1.5 animate-pulse shadow-[0_0_5px_#00FA9A]"></span>
+                            SENKRONİZE
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            <section class="glass-panel p-5 border-l-2 border-l-cyberBlue relative overflow-hidden group focus-within:border-l-purpleAccent focus-within:shadow-[0_0_30px_rgba(107,47,160,0.2)] transition-all">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-cyberBlue/10 rounded-full blur-2xl pointer-events-none group-focus-within:bg-purpleAccent/20 transition-colors"></div>
+                
+                <h3 class="text-xs font-mono text-gray-400 mb-4 uppercase tracking-widest flex items-center">
+                    <i class="fa-solid fa-plus text-cyberBlue mr-2 group-focus-within:text-purpleAccent transition-colors"></i>Yeni Plan Verisi
+                </h3>
+                
+                <div class="space-y-4 relative z-10">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-pen-nib text-gray-500 text-sm"></i>
+                        </div>
+                        <input type="text" id="eventTitle" placeholder="Görev Başlığı (Örn: Vize, Film Gecesi)" class="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purpleAccent focus:ring-1 focus:ring-purpleAccent transition-all shadow-inner">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fa-regular fa-calendar text-gray-500 text-sm"></i>
+                            </div>
+                            <input type="date" id="eventDate" class="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white focus:outline-none focus:border-purpleAccent transition-all font-mono uppercase shadow-inner">
+                        </div>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <i class="fa-regular fa-clock text-gray-500 text-sm"></i>
+                            </div>
+                            <input type="time" id="eventTime" class="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-3 py-3 text-xs text-white focus:outline-none focus:border-purpleAccent transition-all font-mono shadow-inner">
+                        </div>
+                    </div>
+
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-layer-group text-gray-500 text-sm"></i>
+                        </div>
+                        <select id="eventCat" class="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-10 py-3 text-xs text-gray-300 focus:outline-none focus:border-purpleAccent transition-all font-mono shadow-inner">
+                            <option value="Önemli" class="bg-navy">DURUM: Önemli</option>
+                            <option value="Sınav" class="bg-navy">DURUM: Sınav / Ders</option>
+                            <option value="Buluşma" class="bg-navy">DURUM: Kavuşma!</option>
+                            <option value="Rutin" class="bg-navy">DURUM: Rutin</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+                            <i class="fa-solid fa-chevron-down text-gray-500 text-xs"></i>
+                        </div>
+                    </div>
+
+                    <button onclick="addEvent()" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyberBlue/20 to-purpleAccent/20 text-white font-bold text-sm border border-cyberBlue/30 hover:border-purpleAccent/50 active:scale-95 transition-all shadow-[0_0_15px_rgba(0,229,255,0.1)] hover:shadow-[0_0_20px_rgba(107,47,160,0.3)] mt-2">
+                        <i class="fa-solid fa-cloud-arrow-up mr-2"></i>SİSTEME İŞLE
+                    </button>
+                </div>
+            </section>
+
+            <section class="mt-8">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
+                        <i class="fa-solid fa-timeline text-gray-400 text-sm"></i>
+                    </div>
+                    <h2 class="text-xs font-mono tracking-widest text-gray-400 uppercase">Aktif Zaman Çizelgesi</h2>
+                    <div class="h-[1px] flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
+                </div>
+                
+                <div id="eventsContainer" class="space-y-3 relative">
+                    <div class="flex justify-center py-6 opacity-50"><i class="fa-solid fa-circle-notch fa-spin text-2xl text-cyberBlue"></i></div>
+                </div>
+            </section>
+            
+        </main>
+
+        <nav class="absolute bottom-0 w-full glass-nav pt-4 px-6 rounded-t-3xl flex justify-between items-center z-40" id="bottom-nav">
+            <a href="/" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-house text-xl mb-1"></i></a>
+            <a href="/yemek" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-utensils text-xl mb-1"></i></a>
+            <a href="/notlar" class="spa-link relative -top-5 w-14 h-14 bg-gradient-to-tr from-purpleAccent to-burgundy rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(107,47,160,0.5)] border-[3px] border-[#0a0d17] hover:scale-105 transition-transform active:scale-95"><i class="fa-solid fa-pen text-white text-xl drop-shadow-md"></i></a>
+            <a href="/istatistik" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-chart-line text-xl mb-1"></i></a>
+            <a href="/ayarlar" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-gear text-xl mb-1"></i></a>
+        </nav>
+
+    </div>
+
+    <script>
+        function hapticClick(duration = 40) { if (navigator.vibrate) navigator.vibrate(duration); }
+
+        function showToast(message, iconName = 'check-circle', color = '#00E5FF') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `glass-panel flex items-center p-4 rounded-2xl w-full max-w-sm toast-enter border-l-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-[#141B2D]/95`;
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `
+                <div class="w-10 h-10 rounded-full bg-black/30 flex items-center justify-center mr-3 border border-white/5">
+                    <i class="fa-solid fa-${iconName} text-lg" style="color: ${color}"></i>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-white">${message}</p>
+                    <p class="text-[10px] text-gray-400 font-mono">Terminal güncellendi.</p>
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'slideDown 0.4s reverse forwards'; setTimeout(() => toast.remove(), 400); }, 3000);
+        }
+
+        // Akıllı Kategori Görsel Motoru
+        const getCategoryStyles = (category) => {
+            const styles = {
+                "Sınav": { border: "border-l-burgundy", text: "text-burgundy", bg: "bg-burgundy/10", icon: "fa-pen-clip" },
+                "Buluşma": { border: "border-l-neonGreen", text: "text-neonGreen", bg: "bg-neonGreen/10", icon: "fa-heart" },
+                "Önemli": { border: "border-l-coinGold", text: "text-coinGold", bg: "bg-coinGold/10", icon: "fa-bolt" },
+                "Rutin": { border: "border-l-cyberBlue", text: "text-cyberBlue", bg: "bg-cyberBlue/10", icon: "fa-check-double" }
+            };
+            return styles[category] || styles["Rutin"];
+        };
+
+        async function loadEvents() {
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                const container = document.getElementById('eventsContainer');
+                container.innerHTML = '';
+
+                if(events.length === 0) {
+                    container.innerHTML = `
+                        <div class="glass-panel p-6 flex flex-col items-center justify-center text-center opacity-70 border-dashed">
+                            <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                                <i class="fa-solid fa-ghost text-2xl text-gray-500"></i>
+                            </div>
+                            <p class="text-sm text-white font-medium">Ufukta plan yok.</p>
+                            <p class="text-xs text-gray-500 mt-1">Sistem tamamen boşta.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                events.forEach((ev, index) => {
+                    const style = getCategoryStyles(ev.category);
+                    
+                    // Tarihi Parçala ve Düzenle (YYYY-MM-DD -> DD / Ay)
+                    const dateParts = ev.date.split('-');
+                    let day = "--", month = "--", year = "";
+                    if(dateParts.length === 3) {
+                        day = dateParts[2];
+                        month = new Date(ev.date).toLocaleString('tr-TR', { month: 'short' }).toUpperCase();
+                        year = dateParts[0];
+                    }
+
+                    // Gecikmeli giriş animasyonu
+                    const delay = index * 0.1;
+
+                    container.innerHTML += `
+                        <div class="flex items-stretch glass-panel p-3 border-l-[3px] ${style.border} hover:bg-white/5 transition-colors card-enter" style="animation-delay: ${delay}s">
+                            
+                            <div class="${style.bg} rounded-xl p-2 flex flex-col items-center justify-center min-w-[65px] mr-3 border border-white/5">
+                                <span class="text-[10px] ${style.text} font-bold tracking-wider">${month}</span>
+                                <span class="text-xl font-black text-white leading-none my-1">${day}</span>
+                            </div>
+
+                            <div class="flex-1 flex flex-col justify-center py-1 overflow-hidden">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-[9px] font-mono uppercase tracking-widest ${style.text} bg-black/40 px-2 py-0.5 rounded flex items-center">
+                                        <i class="fa-solid ${style.icon} mr-1.5"></i>${ev.category}
+                                    </span>
+                                </div>
+                                <h4 class="text-sm text-white font-bold truncate pr-2">${ev.title}</h4>
+                                <div class="flex items-center text-[10px] text-gray-400 font-mono mt-1.5">
+                                    <i class="fa-regular fa-clock mr-1.5 text-gray-500"></i>
+                                    <span>${ev.time || 'Tüm Gün'}</span>
+                                    <span class="mx-2 text-gray-600">•</span>
+                                    <span>${year}</span>
+                                </div>
+                            </div>
+
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                document.getElementById('eventsContainer').innerHTML = `<p class="text-xs text-center text-red-400 font-mono mt-5">Veritabanı senkronizasyon hatası.</p>`;
+            }
+        }
+
+        async function addEvent() {
+            hapticClick([30, 50]);
+            
+            const title = document.getElementById('eventTitle').value.trim();
+            const date = document.getElementById('eventDate').value;
+            const time = document.getElementById('eventTime').value;
+            const cat = document.getElementById('eventCat').value;
+
+            if(!title || !date) {
+                showToast("Başlık ve Tarih verisi eksik!", "triangle-exclamation", "#EF4444");
+                return;
+            }
+
+            const btn = event.currentTarget;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin mr-2"></i>İŞLENİYOR...`;
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: title, date: date, time: time, category: cat })
+                });
+
+                if(res.ok) {
+                    document.getElementById('eventTitle').value = '';
+                    document.getElementById('eventTime').value = '';
+                    // Tarihi bilerek sıfırlamıyoruz ki art arda aynı güne plan girmek kolay olsun
+                    
+                    showToast("Plan başarıyla sisteme yazıldı.", "check-double", "#00E5FF");
+                    loadEvents(); // Listeyi yenile
+                } else {
+                    throw new Error();
+                }
+            } catch (err) {
+                showToast("Sisteme ulaşılamadı.", "wifi-slash", "#EF4444");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Script direkt çalıştırıldığında veya SPA ile yüklendiğinde tetiklenmesi için
+        loadEvents();
+    </script>
+</body>
+</html>

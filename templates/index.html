@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0B0F1A">
+    <title>Node_Terminal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0B0F1A',
+                        panel: '#141B2D',
+                        burgundy: '#9A1750',
+                        purpleAccent: '#6B2FA0',
+                        neonGreen: '#00FA9A',
+                        coinGold: '#F59E0B',
+                        cyberBlue: '#00E5FF'
+                    },
+                    backgroundImage: {
+                        'cyber-grid': "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNykiLz48L3N2Zz4=')"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Gelişmiş Premium Cam Efekti */
+        .glass-panel {
+            background: rgba(20, 27, 45, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255,255,255,0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 26, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+        }
+
+        @keyframes slideDown { 0% { transform: translateY(-100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .toast-enter { animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* SPA Animasyonu */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(15px); filter: blur(4px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
+
+        /* Puan Artış Animasyonu */
+        .coin-pop { animation: coinPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes coinPop { 0% { transform: scale(1); color: #F59E0B; } 50% { transform: scale(1.4); color: #FFF; text-shadow: 0 0 15px #F59E0B; } 100% { transform: scale(1); color: #FFF; } }
+
+        /* Bottom Sheet (Mağaza) Animasyonu */
+        .bottom-sheet { transform: translateY(100%); transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1); }
+        .bottom-sheet.open { transform: translateY(0); }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-navy flex justify-center h-screen overflow-hidden text-gray-200 selection:bg-purpleAccent selection:text-white relative bg-cyber-grid bg-[length:20px_20px]">
+
+    <div id="toast-container" class="absolute top-5 left-0 w-full flex flex-col items-center z-[100] pointer-events-none space-y-2 px-4"></div>
+
+    <div id="profile-overlay" onclick="toggleProfile()" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden opacity-0 transition-opacity duration-300"></div>
+    <div id="profile-modal" class="fixed top-20 right-5 w-64 glass-panel p-5 z-[70] hidden opacity-0 transition-all duration-300 transform scale-95 origin-top-right border-t border-t-cyberBlue/50 bg-[#0a0d17]/95">
+        <div class="flex items-center space-x-3 mb-4 border-b border-white/10 pb-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-cyberBlue to-purpleAccent p-[2px] relative">
+                <div class="w-full h-full bg-navy rounded-full flex items-center justify-center"><i class="fa-solid fa-user-astronaut text-white text-lg"></i></div>
+                <div class="absolute bottom-0 right-0 w-3 h-3 bg-neonGreen border-2 border-navy rounded-full animate-pulse"></div>
+            </div>
+            <div>
+                <p class="text-[10px] text-cyberBlue font-mono uppercase tracking-widest">Aktif Bağlantı</p>
+                <h3 id="profile-user-id" class="text-white font-bold text-lg leading-tight">Kimlik Aranıyor</h3>
+            </div>
+        </div>
+        <div class="space-y-3 font-mono text-[10px]">
+            <div class="flex justify-between text-gray-400"><span>Ağ Durumu:</span> <span class="text-neonGreen">Şifreli (E2E)</span></div>
+            <div class="flex justify-between text-gray-400"><span>Terminal V:</span> <span class="text-white">v3.3.0_PRO</span></div>
+            <div class="flex justify-between text-gray-400"><span>Toplam Veri:</span> <span class="text-coinGold" id="profile-credits">0 NC</span></div>
+            <div class="flex justify-between text-gray-400 border-t border-white/5 pt-2 mt-2"><span>Günlük Limit:</span> <span id="daily-limit-text" class="text-white">0 / 35 NC</span></div>
+        </div>
+    </div>
+
+    <div id="store-overlay" onclick="toggleStore()" class="fixed inset-0 bg-black/70 backdrop-blur-md z-[80] hidden opacity-0 transition-opacity duration-300"></div>
+    <div id="store-modal" class="fixed bottom-0 left-0 w-full max-w-md mx-auto right-0 bg-[#0B0F1A] border-t border-white/10 rounded-t-3xl z-[90] bottom-sheet shadow-[0_-20px_50px_rgba(0,0,0,0.8)] flex flex-col pb-6">
+        <div class="absolute top-0 right-0 w-48 h-48 bg-coinGold/10 rounded-full blur-[80px] pointer-events-none"></div>
+        <div class="w-12 h-1.5 bg-white/20 rounded-full mx-auto mt-4 mb-4"></div>
+        <div class="px-6 flex justify-between items-center mb-4 relative z-10">
+            <div>
+                <h2 class="text-xl font-bold text-white tracking-wide"><i class="fa-solid fa-store text-coinGold mr-2"></i>Ödül Mağazası</h2>
+                <p class="text-[10px] font-mono text-gray-400">Node Credits (NC) Bakiyesi</p>
+            </div>
+            <div class="bg-gradient-to-r from-yellow-900/40 to-yellow-600/20 px-4 py-2 rounded-xl border border-coinGold/30 text-white font-mono font-bold shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                <span id="store-balance" class="text-lg">0</span> <span class="text-coinGold text-xs ml-1">NC</span>
+            </div>
+        </div>
+        
+        <div class="overflow-y-auto px-5 space-y-3 no-scrollbar max-h-[55vh] relative z-10 pb-4">
+            <button onclick="buyItem(150, 'Kahve Ismarla')" class="w-full flex items-center p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 active:scale-[0.98] transition-all text-left group">
+                <div class="w-12 h-12 rounded-xl bg-orange-900/40 flex items-center justify-center mr-4 border border-orange-500/30 group-hover:shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-shadow"><i class="fa-solid fa-mug-hot text-orange-400 text-xl"></i></div>
+                <div class="flex-1"><h3 class="font-bold text-white text-sm">Kahve Ismarla</h3><p class="text-[10px] text-gray-400 mt-0.5">Bir dahaki buluşmada kahveler benden.</p></div>
+                <div class="bg-coinGold/20 text-coinGold text-xs font-bold px-2.5 py-1.5 rounded-lg">150 NC</div>
+            </button>
+
+            <button onclick="buyItem(300, 'Film Seçme Hakkı')" class="w-full flex items-center p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 active:scale-[0.98] transition-all text-left group">
+                <div class="w-12 h-12 rounded-xl bg-blue-900/40 flex items-center justify-center mr-4 border border-blue-500/30 group-hover:shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-shadow"><i class="fa-solid fa-film text-blue-400 text-xl"></i></div>
+                <div class="flex-1"><h3 class="font-bold text-white text-sm">Film Seçme Hakkı</h3><p class="text-[10px] text-gray-400 mt-0.5">Akşam izlenecek filmi sen belirlersin.</p></div>
+                <div class="bg-coinGold/20 text-coinGold text-xs font-bold px-2.5 py-1.5 rounded-lg">300 NC</div>
+            </button>
+
+            <button onclick="buyItem(500, 'Tartışma Bitirici')" class="w-full flex items-center p-3.5 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10 active:scale-[0.98] transition-all text-left group">
+                <div class="w-12 h-12 rounded-xl bg-green-900/40 flex items-center justify-center mr-4 border border-green-500/30 group-hover:shadow-[0_0_15px_rgba(34,197,94,0.3)] transition-shadow"><i class="fa-solid fa-handshake-angle text-green-400 text-xl"></i></div>
+                <div class="flex-1"><h3 class="font-bold text-white text-sm">Haklısın Kartı</h3><p class="text-[10px] text-gray-400 mt-0.5">Ufak bir tartışmada otomatik haklı çıkarsın.</p></div>
+                <div class="bg-coinGold/20 text-coinGold text-xs font-bold px-2.5 py-1.5 rounded-lg">500 NC</div>
+            </button>
+
+            <button onclick="buyItem(1000, 'Sürpriz Kutu')" class="w-full flex items-center p-3.5 rounded-2xl bg-gradient-to-r from-purpleAccent/30 to-pink-900/30 border border-purpleAccent/50 hover:opacity-90 active:scale-[0.98] transition-all text-left relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[slideRight_1.5s_infinite]"></div>
+                <div class="w-12 h-12 rounded-xl bg-purpleAccent/30 flex items-center justify-center mr-4 shadow-[0_0_15px_rgba(107,47,160,0.5)]"><i class="fa-solid fa-gift text-white text-xl"></i></div>
+                <div class="flex-1 relative z-10"><h3 class="font-bold text-white text-sm">Sürpriz Kutu</h3><p class="text-[10px] text-purple-200 mt-0.5">Karşı taraf bir sürpriz yapmak zorunda kalır.</p></div>
+                <div class="bg-coinGold/20 text-coinGold text-xs font-bold px-2.5 py-1.5 rounded-lg relative z-10">1000 NC</div>
+                <style>@keyframes slideRight { 100% { transform: translateX(100%); } }</style>
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md h-full relative flex flex-col overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10">
+        
+        <div class="absolute top-0 left-0 w-72 h-72 bg-purpleAccent rounded-full blur-[120px] opacity-10 -ml-20 -mt-20 pointer-events-none"></div>
+        <div class="absolute bottom-1/4 right-0 w-72 h-72 bg-burgundy rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
+
+        <main id="app-main" class="flex-1 overflow-y-auto no-scrollbar pb-40 p-5 space-y-5 fade-in relative z-10">
+            
+            <header class="flex justify-between items-center mb-1">
+                <div>
+                    <h1 class="text-2xl font-black text-white tracking-wide drop-shadow-md">Node<span class="text-purpleAccent">.sys</span></h1>
+                    <p class="text-[10px] text-neonGreen font-mono flex items-center mt-0.5" id="network-status">
+                        <i id="sync-dot" class="fa-solid fa-circle text-[6px] animate-pulse mr-1.5 shadow-[0_0_5px_#00FA9A]"></i>
+                        <span id="live-clock">00:00:00</span> <span class="ml-1" id="network-text">- SYNCED</span>
+                    </p>
+                </div>
+                <button onclick="toggleProfile()" class="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center bg-white/5 hover:bg-white/10 active:scale-90 transition-all shadow-[0_0_20px_rgba(107,47,160,0.2)] relative">
+                    <i class="fa-solid fa-user-astronaut text-purple-300 text-lg"></i>
+                    <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-neonGreen rounded-full border border-[#0B0F1A]"></span>
+                </button>
+            </header>
+
+            <section class="glass-panel p-6 relative overflow-hidden text-center">
+                <div class="absolute top-0 right-0 w-40 h-40 bg-burgundy rounded-full blur-3xl opacity-20 -mr-10 -mt-10 pointer-events-none"></div>
+                <p class="text-xs text-gray-400 font-mono uppercase tracking-widest mb-2 flex items-center justify-center">Samsun <i class="fa-solid fa-plane-departure text-purpleAccent mx-3 animate-pulse"></i> Gümüşhane</p>
+                <div class="text-6xl font-black text-white mb-1 drop-shadow-[0_5px_15px_rgba(154,23,80,0.4)]"><span id="countdown-days">--</span><span class="text-xl font-medium text-gray-400 ml-2">Gün</span></div>
+                <div class="w-full bg-black/40 rounded-full h-2 mt-5 overflow-hidden relative shadow-inner"><div id="progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-purpleAccent to-burgundy rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(154,23,80,0.8)]" style="width: 0%"></div></div>
+                <p class="text-[9px] text-gray-500 mt-2 font-mono" id="target-date-text">Hedef: 10 Ekim 2026</p>
+            </section>
+
+            <section class="grid grid-cols-3 gap-3">
+                <button onclick="triggerAction('Açlık Alarmı', 'burger', '#9A1750', 10)" class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-[#5a0c2c]/80 to-[#9A1750]/80 active:scale-95 transition-all shadow-[0_8px_20px_rgba(154,23,80,0.25)] border border-white/10 group overflow-hidden h-28">
+                    <div class="absolute inset-0 bg-white/5 opacity-0 group-active:opacity-100 transition-opacity"></div>
+                    <i class="fa-solid fa-burger text-white text-2xl mb-2 drop-shadow-md group-active:scale-110 transition-transform"></i>
+                    <h3 class="font-bold text-white text-xs drop-shadow-md">Açlık</h3>
+                    <span class="text-[9px] font-bold text-yellow-300 opacity-0 group-active:opacity-100 transition-opacity absolute bottom-2">+10 NC</span>
+                </button>
+
+                <button onclick="triggerAction('Küstüm', 'heart-crack', '#6B2FA0', 10)" class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-[#391757]/80 to-[#6B2FA0]/80 active:scale-95 transition-all shadow-[0_8px_20px_rgba(107,47,160,0.25)] border border-white/10 group overflow-hidden h-28">
+                    <div class="absolute inset-0 bg-white/5 opacity-0 group-active:opacity-100 transition-opacity"></div>
+                    <i class="fa-solid fa-heart-crack text-white text-2xl mb-2 drop-shadow-md group-active:scale-110 transition-transform"></i>
+                    <h3 class="font-bold text-white text-xs drop-shadow-md">Küstüm</h3>
+                    <span class="text-[9px] font-bold text-yellow-300 opacity-0 group-active:opacity-100 transition-opacity absolute bottom-2">+10 NC</span>
+                </button>
+                
+                <button onclick="triggerBoredom()" class="relative flex flex-col items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-[#0d2a4a]/80 to-cyberBlue/70 active:scale-95 transition-all shadow-[0_8px_20px_rgba(0,229,255,0.2)] border border-white/10 group overflow-hidden h-28">
+                    <div class="absolute inset-0 bg-white/5 opacity-0 group-active:opacity-100 transition-opacity"></div>
+                    <i class="fa-solid fa-gamepad text-white text-2xl mb-2 drop-shadow-md group-active:scale-110 transition-transform"></i>
+                    <h3 class="font-bold text-white text-xs drop-shadow-md">Sıkıldım</h3>
+                    <span class="text-[9px] font-bold text-yellow-300 opacity-0 group-active:opacity-100 transition-opacity absolute bottom-2">+10 NC</span>
+                </button>
+            </section>
+
+            <a href="/takvim" class="spa-link block glass-panel p-4 cursor-pointer hover:border-purpleAccent/50 active:scale-[0.98] transition-all border border-transparent">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-sm font-semibold text-gray-300"><i class="fa-solid fa-calendar-check text-purpleAccent mr-2"></i>Sistem Ajandası</h3>
+                    <span class="text-[9px] bg-cyberBlue/10 text-cyberBlue px-2 py-1 rounded border border-cyberBlue/30 font-mono tracking-wider">SYNC</span>
+                </div>
+                <div class="flex items-center bg-black/30 rounded-xl p-3 border border-white/5 border-l-2 border-l-cyberBlue group">
+                    <div class="bg-white/5 rounded-lg p-2 text-center w-12 mr-3 flex items-center justify-center border border-white/5" id="widget-calendar-icon"><i class="fa-solid fa-spinner fa-spin text-gray-400"></i></div>
+                    <div class="flex-1 min-w-0">
+                        <p id="widget-event-title" class="text-sm text-white font-medium truncate group-hover:text-cyberBlue transition-colors">Veri Çekiliyor...</p>
+                        <p id="widget-event-time" class="text-[10px] text-gray-500 font-mono mt-0.5"><i class="fa-solid fa-satellite-dish mr-1"></i>Bağlanıyor</p>
+                    </div>
+                    <i class="fa-solid fa-chevron-right text-gray-600 ml-2 text-xs group-hover:text-white transition-colors"></i>
+                </div>
+            </a>
+        </main>
+
+        <div id="wallet-widget" class="absolute bottom-24 left-0 w-full px-5 z-30 pointer-events-none transition-opacity duration-300">
+            <section onclick="toggleStore()" class="glass-panel p-3.5 flex items-center cursor-pointer hover:bg-white/5 active:scale-[0.98] transition-all border border-coinGold/30 bg-[#0a0d17]/95 pointer-events-auto shadow-[0_10px_30px_rgba(245,158,11,0.2)]">
+                <div class="w-11 h-11 bg-gradient-to-br from-yellow-500 to-yellow-800 rounded-xl mr-4 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)] relative overflow-hidden border border-yellow-300/30">
+                    <i class="fa-solid fa-coins text-white text-xl relative z-10 drop-shadow-md"></i>
+                </div>
+                <div class="flex-1 min-w-0 pr-2">
+                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">Sistem Kredisi</p>
+                    <p id="main-balance" class="text-xl text-white font-bold font-mono transition-transform">0 <span class="text-[11px] text-coinGold">NC</span></p>
+                </div>
+                <div class="w-9 h-9 rounded-full bg-coinGold/10 flex items-center justify-center text-coinGold hover:bg-coinGold hover:text-white transition-colors border border-coinGold/20">
+                    <i class="fa-solid fa-store text-xs"></i>
+                </div>
+            </section>
+        </div>
+
+        <nav class="absolute bottom-0 w-full glass-nav pt-4 px-6 rounded-t-3xl flex justify-between items-center z-40" id="bottom-nav">
+            <a href="/" class="spa-link flex flex-col items-center text-purpleAccent scale-110 drop-shadow-[0_0_10px_rgba(107,47,160,0.5)] transition-transform"><i class="fa-solid fa-house text-xl mb-1"></i></a>
+            <a href="/yemek" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-utensils text-xl mb-1"></i></a>
+            <a href="/notlar" class="spa-link relative -top-5 w-14 h-14 bg-gradient-to-tr from-purpleAccent to-burgundy rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(107,47,160,0.5)] border-[3px] border-[#0a0d17] hover:scale-105 transition-transform active:scale-95"><i class="fa-solid fa-pen text-white text-xl drop-shadow-md"></i></a>
+            <a href="/istatistik" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-chart-line text-xl mb-1"></i></a>
+            <a href="/ayarlar" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-gear text-xl mb-1"></i></a>
+        </nav>
+
+    </div>
+
+    <script>
+        function hapticClick(duration = 40) { if (navigator.vibrate) navigator.vibrate(duration); }
+
+        // =========================================================================
+        // 0. KİMLİK KARTI (PROFILE) MOTORU
+        // =========================================================================
+        if (!localStorage.getItem('user_identity')) { localStorage.setItem('user_identity', 'User_A'); }
+        
+        function toggleProfile() {
+            hapticClick(30);
+            const overlay = document.getElementById('profile-overlay');
+            const modal = document.getElementById('profile-modal');
+            
+            if(modal.classList.contains('hidden')) {
+                document.getElementById('profile-user-id').innerText = localStorage.getItem('user_identity');
+                document.getElementById('profile-credits').innerText = (localStorage.getItem('nodeCredits') || 50) + " NC";
+                document.getElementById('daily-limit-text').innerText = (localStorage.getItem('dailyEarnedPoints') || 0) + " / 35 NC";
+                
+                overlay.classList.remove('hidden');
+                modal.classList.remove('hidden');
+                setTimeout(() => { overlay.style.opacity = '1'; modal.classList.remove('opacity-0', 'scale-95'); }, 10);
+            } else {
+                overlay.style.opacity = '0';
+                modal.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => { overlay.classList.add('hidden'); modal.classList.add('hidden'); }, 300);
+            }
+        }
+
+        // =========================================================================
+        // 1. OYUNLAŞTIRMA VE GÜNLÜK LİMİTLİ (35 NC) PUAN SİSTEMİ
+        // =========================================================================
+        let nodeCredits = parseInt(localStorage.getItem('nodeCredits')) || 50;
+        const DAILY_LIMIT = 35;
+
+        function updateCreditDisplay() {
+            const mainBal = document.getElementById('main-balance');
+            if(mainBal) {
+                mainBal.innerHTML = `${nodeCredits} <span class="text-[11px] text-coinGold">NC</span>`;
+                mainBal.classList.remove('coin-pop'); void mainBal.offsetWidth; mainBal.classList.add('coin-pop');
+            }
+            const storeBal = document.getElementById('store-balance');
+            if(storeBal) storeBal.innerText = nodeCredits;
+            
+            const profileBal = document.getElementById('profile-credits');
+            if(profileBal) profileBal.innerText = nodeCredits + " NC";
+        }
+
+        function addCredits(amount) {
+            const today = new Date().toDateString();
+            let dailyEarned = parseInt(localStorage.getItem('dailyEarnedPoints')) || 0;
+            let earnedDate = localStorage.getItem('dailyEarnedDate');
+
+            if (earnedDate !== today) { dailyEarned = 0; localStorage.setItem('dailyEarnedDate', today); }
+
+            let pointsToAdd = amount;
+            if (dailyEarned + amount > DAILY_LIMIT) { pointsToAdd = DAILY_LIMIT - dailyEarned; }
+
+            if (pointsToAdd > 0) {
+                nodeCredits += pointsToAdd;
+                dailyEarned += pointsToAdd;
+                
+                localStorage.setItem('nodeCredits', nodeCredits);
+                localStorage.setItem('dailyEarnedPoints', dailyEarned);
+                updateCreditDisplay();
+
+                if (pointsToAdd < amount || dailyEarned === DAILY_LIMIT) {
+                    setTimeout(() => showToast(`Limit doldu! Sadece +${pointsToAdd} eklendi.`, 'battery-quarter', '#F59E0B'), 1000);
+                }
+            } else {
+                showToast("Günlük Puan Limiti (35 NC) Doldu!", "ban", "#EF4444");
+            }
+        }
+
+        function toggleStore() {
+            hapticClick(30);
+            const overlay = document.getElementById('store-overlay');
+            const modal = document.getElementById('store-modal');
+            
+            if (modal.classList.contains('open')) {
+                modal.classList.remove('open');
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.classList.add('hidden'); }, 400);
+            } else {
+                updateCreditDisplay();
+                overlay.classList.remove('hidden');
+                setTimeout(() => { overlay.style.opacity = '1'; modal.classList.add('open'); }, 10);
+            }
+        }
+
+        async function buyItem(price, itemName) {
+            hapticClick([30, 50, 30]);
+            if (nodeCredits >= price) {
+                nodeCredits -= price;
+                localStorage.setItem('nodeCredits', nodeCredits);
+                updateCreditDisplay();
+                
+                try {
+                    await fetch('/api/trigger', { 
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify({ action: `MAĞAZA: ${itemName} alındı!`, user_id: localStorage.getItem('user_identity') }) 
+                    });
+                } catch(e) {}
+                
+                showToast(`Satın Alındı: ${itemName}`, 'gift', '#F59E0B');
+                toggleStore();
+            } else {
+                showToast(`Bakiye Yetersiz (${price - nodeCredits} NC eksik)`, "circle-xmark", "#EF4444");
+            }
+        }
+
+        function checkDailyLogin() {
+            const lastLogin = localStorage.getItem('lastLoginDate');
+            const today = new Date().toDateString();
+            if (lastLogin !== today) {
+                setTimeout(() => {
+                    addCredits(15);
+                    showToast("Günlük Giriş Ödülü: +15 NC", "coins", "#00FA9A");
+                    localStorage.setItem('lastLoginDate', today);
+                }, 2000);
+            }
+        }
+
+        // =========================================================================
+        // 2. ULTRA GELİŞMİŞ SPA MOTORU (Cüzdan Yönetimi)
+        // =========================================================================
+        document.addEventListener('click', async (e) => {
+            const link = e.target.closest('.spa-link');
+            if (!link) return;
+            
+            e.preventDefault();
+            hapticClick(20);
+            const url = link.getAttribute('href');
+            if (url === window.location.pathname) return;
+
+            document.querySelectorAll('#bottom-nav a').forEach(a => {
+                a.classList.remove('text-purpleAccent', 'scale-110', 'drop-shadow-[0_0_10px_rgba(107,47,160,0.5)]');
+                a.classList.add('text-gray-500');
+                if(a.getAttribute('href') === url) {
+                    a.classList.remove('text-gray-500');
+                    a.classList.add('text-purpleAccent', 'scale-110', 'drop-shadow-[0_0_10px_rgba(107,47,160,0.5)]');
+                }
+            });
+
+            // CÜZDANI SADECE ANA SAYFADA GÖSTER
+            const wallet = document.getElementById('wallet-widget');
+            if(wallet) { url === '/' ? wallet.classList.remove('opacity-0', 'pointer-events-none') : wallet.classList.add('opacity-0', 'pointer-events-none'); }
+
+            try {
+                const res = await fetch(url);
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const newMain = doc.querySelector('main');
+                const currentMain = document.getElementById('app-main');
+                
+                currentMain.classList.remove('fade-in');
+                void currentMain.offsetWidth;
+                currentMain.innerHTML = newMain.innerHTML;
+                currentMain.className = newMain.className + (url === '/' ? ' fade-in pb-40' : ' fade-in pb-28'); 
+                
+                window.history.pushState({}, '', url);
+
+                const scripts = doc.querySelectorAll('body script:not([src])');
+                scripts.forEach(oldScript => {
+                    let code = oldScript.textContent;
+                    code = code.replace(/window\.onload\s*=\s*([a-zA-Z0-9_]+);/g, '$1();');
+                    const newScript = document.createElement('script');
+                    newScript.textContent = code;
+                    newScript.className = 'pjax-script';
+                    document.querySelectorAll('.pjax-script').forEach(s => s.remove());
+                    document.body.appendChild(newScript);
+                });
+                
+                if(url === '/') { updateCountdown(); fetchUpcomingEvent(); updateCreditDisplay(); }
+
+            } catch (err) { window.location.href = url; }
+        });
+
+        // =========================================================================
+        // 3. TETİKLEYİCİLER VE CANLI VERİ
+        // =========================================================================
+        function showToast(message, iconName = 'check-circle', color = '#6B2FA0') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `glass-panel flex items-center p-4 rounded-2xl w-full max-w-sm toast-enter border-l-4 shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-[#141B2D]/95`;
+            toast.style.borderLeftColor = color;
+            toast.innerHTML = `<i class="fa-solid fa-${iconName} text-xl mr-3" style="color: ${color}"></i>
+                <div class="flex-1"><p class="text-sm font-semibold text-white">${message}</p><p class="text-[10px] text-gray-400 font-mono">Sistem Kayıtlı.</p></div>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = 'slideDown 0.4s reverse forwards'; setTimeout(() => toast.remove(), 400); }, 3000);
+        }
+
+        async function triggerAction(actionType, icon, color, rewardPoints = 0) {
+            hapticClick([50, 50, 100]); 
+            try {
+                const response = await fetch('/api/trigger', { 
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ action: actionType, user_id: localStorage.getItem('user_identity') }) 
+                });
+                if(response.ok) {
+                    showToast(`[${actionType}] iletildi`, icon, color);
+                    if(rewardPoints > 0) addCredits(rewardPoints); 
+                }
+            } catch (error) { showToast("Sunucuya ulaşılamadı!", "triangle-exclamation", "#ef4444"); }
+        }
+
+        function triggerBoredom() {
+            const activities = ["Beraber film izleyelim mi?", "Hadi oyun oynayalım!", "Bana gününü anlat...", "Dışarı çıkıp yürüyüş mü yapsak?", "Komik bir video açıp izleyelim!"];
+            const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+            triggerAction(`Aktivite: ${randomActivity}`, 'gamepad', '#00E5FF', 10);
+        }
+
+        function updateClock() {
+            const clockEl = document.getElementById('live-clock');
+            if(clockEl) clockEl.innerText = new Date().toLocaleTimeString('tr-TR', { hour12: false });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function updateCountdown() {
+            const el = document.getElementById('countdown-days');
+            if(!el) return;
+            const targetDate = new Date('2026-10-10T00:00:00');
+            const diffTime = targetDate - new Date();
+            el.innerText = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+            document.getElementById('target-date-text').innerText = `Hedef: 10 Ekim 2026`;
+            
+            const startDate = new Date('2026-06-01T00:00:00');
+            let progress = ((new Date() - startDate) / (targetDate - startDate)) * 100;
+            document.getElementById('progress-bar').style.width = `${Math.max(0, Math.min(progress, 100))}%`;
+        }
+
+        async function fetchUpcomingEvent() {
+            const titleEl = document.getElementById('widget-event-title');
+            if(!titleEl) return;
+            try {
+                const res = await fetch('/api/events');
+                const events = await res.json();
+                if (events.length > 0) {
+                    const next = events[0];
+                    const trDate = next.date.split('-').reverse().join('.'); 
+                    titleEl.innerText = next.title;
+                    document.getElementById('widget-event-time').innerHTML = `<i class="fa-regular fa-clock mr-1 text-cyberBlue"></i>${trDate} - ${next.time || 'Tüm Gün'}`;
+                    document.getElementById('widget-calendar-icon').innerHTML = `<span class="block text-[11px] text-cyberBlue font-bold uppercase font-mono">${next.category.substring(0,3)}</span>`;
+                } else {
+                    titleEl.innerText = "Yaklaşan görev yok.";
+                    document.getElementById('widget-event-time').innerText = "Sistem beklemede.";
+                    document.getElementById('widget-calendar-icon').innerHTML = `<i class="fa-solid fa-check text-green-400"></i>`;
+                }
+            } catch (error) { titleEl.innerText = "Veri Hatası"; }
+        }
+
+        window.addEventListener('load', () => {
+            updateCountdown();
+            fetchUpcomingEvent();
+            updateCreditDisplay();
+            checkDailyLogin();
+            
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/static/sw.js');
+                if('Notification' in window) Notification.requestPermission();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0B0F1A">
+    <title>Node_Stats_Telemetry</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: '#0B0F1A',
+                        panel: '#141B2D',
+                        burgundy: '#9A1750',
+                        purpleAccent: '#6B2FA0',
+                        neonGreen: '#00FA9A',
+                        neonRed: '#FF3366',
+                        coinGold: '#F59E0B',
+                        cyberBlue: '#00E5FF'
+                    },
+                    backgroundImage: {
+                        'cyber-grid': "url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMiIgY3k9IjIiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4wNykiLz48L3N2Zz4=')"
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Gelişmiş Premium Cam Efekti */
+        .glass-panel {
+            background: rgba(20, 27, 45, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 0 15px rgba(255,255,255,0.02);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-nav {
+            background: rgba(11, 15, 26, 0.92);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+        }
+
+        /* SPA Geçiş Animasyonu */
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { 0% { opacity: 0; transform: translateY(15px); filter: blur(4px); } 100% { opacity: 1; transform: translateY(0); filter: blur(0); } }
+
+        /* Mobil İçin Kusursuz Merkezlenmiş Sayaç */
+        .chart-center-text {
+            position: absolute;
+            top: 45%; 
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: rgba(0, 229, 255, 0.5);
+            position: absolute;
+            animation: scan 3s linear infinite;
+            opacity: 0.5;
+            z-index: 10;
+        }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-navy flex justify-center h-screen overflow-hidden text-gray-200 selection:bg-purpleAccent selection:text-white relative bg-cyber-grid bg-[length:20px_20px]">
+
+    <div class="w-full max-w-md h-full relative flex flex-col overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.8)] z-10">
+        
+        <div class="absolute top-0 right-0 w-72 h-72 bg-purpleAccent rounded-full blur-[120px] opacity-15 -mr-20 -mt-20 pointer-events-none"></div>
+        <div class="absolute bottom-1/3 left-0 w-64 h-64 bg-cyberBlue rounded-full blur-[120px] opacity-10 pointer-events-none"></div>
+
+        <main id="app-main" class="flex-1 overflow-y-auto no-scrollbar pb-32 p-5 space-y-5 fade-in relative z-10"> 
+            
+            <header class="flex justify-between items-center bg-white/5 p-4 rounded-2xl border border-white/10 shadow-inner">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-cyberBlue/10 flex items-center justify-center mr-3 border border-cyberBlue/30 shadow-[0_0_15px_rgba(0,229,255,0.2)]">
+                        <i class="fa-solid fa-satellite-dish text-cyberBlue text-sm animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-bold text-white tracking-widest uppercase">Telemetry<span class="text-cyberBlue">.log</span></h1>
+                        <p class="text-[9px] text-gray-400 font-mono mt-0.5">NODE_CLUSTER_SYNCED</p>
+                    </div>
+                </div>
+                <span class="flex items-center text-[10px] bg-neonGreen/10 text-neonGreen px-2.5 py-1.5 rounded-md border border-neonGreen/30 font-bold tracking-widest shadow-[0_0_10px_rgba(0,250,154,0.1)]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-neonGreen mr-1.5 animate-pulse"></span>LİVE
+                </span>
+            </header>
+
+            <section class="glass-panel p-5 relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-purpleAccent/10 rounded-full blur-2xl pointer-events-none transition-colors group-hover:bg-cyberBlue/10"></div>
+                <div class="scanline"></div>
+                
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-mono text-gray-400 uppercase tracking-widest"><i class="fa-solid fa-chart-pie text-cyberBlue mr-2"></i>Sinyal Dağılımı</h3>
+                </div>
+                
+                <div class="relative h-64 w-full flex items-center justify-center mt-2">
+                    <canvas id="signalChart" class="relative z-20"></canvas>
+                    
+                    <div class="chart-center-text z-10 flex flex-col items-center justify-center">
+                        <p class="text-[9px] text-gray-500 font-mono tracking-widest uppercase mb-1">Toplam Sinyal</p>
+                        <p id="centerTotal" class="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(0,229,255,0.4)]">0</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="grid grid-cols-2 gap-3">
+                
+                <div class="glass-panel p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div id="heat-glow" class="absolute inset-0 bg-neonGreen opacity-5 transition-colors duration-1000"></div>
+                    <i id="heat-icon" class="fa-solid fa-temperature-half text-2xl text-neonGreen mb-2 transition-colors duration-1000"></i>
+                    <h4 class="text-[9px] text-gray-400 font-mono uppercase tracking-wider mb-0.5">Sistem Isısı</h4>
+                    <p id="system-heat" class="text-sm font-bold text-white tracking-wide z-10">ANALİZ...</p>
+                </div>
+
+                <div class="glass-panel p-4 flex flex-col items-center justify-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-coinGold opacity-5"></div>
+                    <i class="fa-solid fa-crown text-2xl text-coinGold mb-2 drop-shadow-[0_0_10px_rgba(245,158,11,0.4)]"></i>
+                    <h4 class="text-[9px] text-gray-400 font-mono uppercase tracking-wider mb-0.5">Baskın Sinyal</h4>
+                    <p id="dominant-signal" class="text-xs font-bold text-white tracking-wide text-center truncate w-full px-1">-</p>
+                </div>
+
+                <div class="glass-panel p-4 flex items-center justify-between col-span-2 hover:bg-white/5 transition-colors">
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-xl bg-purpleAccent/20 flex items-center justify-center mr-3 border border-purpleAccent/30">
+                            <i class="fa-solid fa-shield-halved text-purple-400 text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-white">Veri Bütünlüğü</h4>
+                            <p class="text-[9px] text-gray-400 font-mono mt-0.5">AES-256 Şifreleme</p>
+                        </div>
+                    </div>
+                    <span class="text-purple-400 font-mono font-bold text-xs bg-purpleAccent/10 px-2 py-1 rounded border border-purpleAccent/20">%100</span>
+                </div>
+            </div>
+
+            <section class="glass-panel p-4 bg-[#05080f]/80">
+                <div class="flex items-center mb-2 border-b border-white/5 pb-2">
+                    <i class="fa-solid fa-terminal text-[10px] text-cyberBlue mr-2"></i>
+                    <h3 class="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Sistem Logları</h3>
+                </div>
+                <div id="terminal-logs" class="font-mono text-[10px] text-gray-400 space-y-1 h-14 overflow-hidden flex flex-col justify-end">
+                    <p><span class="text-cyberBlue">root@node:~#</span> init --telemetry</p>
+                    <p class="animate-pulse">Bağlantı kuruluyor...</p>
+                </div>
+            </section>
+
+        </main>
+
+        <nav class="absolute bottom-0 w-full glass-nav pt-4 px-6 rounded-t-3xl flex justify-between items-center z-40" id="bottom-nav">
+            <a href="/" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-house text-xl mb-1"></i></a>
+            <a href="/yemek" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-utensils text-xl mb-1"></i></a>
+            <a href="/notlar" class="spa-link relative -top-5 w-14 h-14 bg-gradient-to-tr from-purpleAccent to-burgundy rounded-full flex items-center justify-center shadow-[0_10px_20px_rgba(107,47,160,0.5)] border-[3px] border-[#0a0d17] hover:scale-105 transition-transform active:scale-95"><i class="fa-solid fa-pen text-white text-xl drop-shadow-md"></i></a>
+            <a href="/istatistik" class="spa-link flex flex-col items-center text-purpleAccent scale-110 drop-shadow-[0_0_10px_rgba(107,47,160,0.5)] transition-transform"><i class="fa-solid fa-chart-line text-xl mb-1"></i></a>
+            <a href="/ayarlar" class="spa-link flex flex-col items-center text-gray-500 hover:text-white transition-colors"><i class="fa-solid fa-gear text-xl mb-1"></i></a>
+        </nav>
+    </div>
+
+    <script>
+        // Terminal Animasyonu
+        const logMessages = [
+            "DB soketi doğrulandı.",
+            "Paket kümeleri çözümleniyor...",
+            "Vektörler başarıyla hesaplandı.",
+            "Görselleştirme motoru devrede.",
+            "Sistem stabil, veri akışı kusursuz."
+        ];
+        
+        let logIndex = 0;
+        let logTimeout;
+        function addTerminalLog() {
+            if (logIndex >= logMessages.length) return;
+            const container = document.getElementById('terminal-logs');
+            if(!container) return; // SPA geçişi güvenliği
+            
+            const newLog = document.createElement('p');
+            newLog.innerHTML = `<span class="text-neonGreen">[OK]</span> ${logMessages[logIndex]}`;
+            container.appendChild(newLog);
+            
+            if(container.children.length > 3) container.removeChild(container.firstChild);
+            logIndex++;
+            logTimeout = setTimeout(addTerminalLog, 800);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/stats');
+                const data = await res.json();
+                
+                const labels = Object.keys(data);
+                const values = Object.values(data);
+                const total = values.reduce((a, b) => a + b, 0);
+
+                const centerTotalEl = document.getElementById('centerTotal');
+                if(centerTotalEl) centerTotalEl.innerText = total;
+
+                let dominantName = "Veri Yok";
+                let maxVal = 0;
+                let kuestuemCount = 0;
+                let aclickCount = 0;
+
+                for(let key in data) {
+                    if(data[key] > maxVal) { maxVal = data[key]; dominantName = key; }
+                    if(key.includes("Küstüm")) kuestuemCount = data[key];
+                    if(key.includes("Açlık")) aclickCount = data[key];
+                }
+                
+                if(dominantName.includes("SAĞLIK:")) dominantName = dominantName.replace("SAĞLIK: ", "");
+                
+                const dominantSignalEl = document.getElementById('dominant-signal');
+                if(dominantSignalEl) dominantSignalEl.innerText = maxVal > 0 ? dominantName : "Sinyal Bekleniyor";
+
+                // Yapay Zeka Isı Analizi
+                const heatText = document.getElementById('system-heat');
+                const heatIcon = document.getElementById('heat-icon');
+                const heatGlow = document.getElementById('heat-glow');
+
+                if(heatText && heatIcon && heatGlow) {
+                    if (total === 0) {
+                        heatText.innerText = "BEKLEMEDE";
+                        heatIcon.className = "fa-solid fa-moon text-2xl text-gray-500 mb-2";
+                        heatGlow.className = "absolute inset-0 bg-gray-500 opacity-5";
+                    } else if (kuestuemCount > (total * 0.3) || kuestuemCount >= 3) {
+                        heatText.innerText = "KRİTİK";
+                        heatText.className = "text-sm font-bold text-neonRed tracking-wide z-10 animate-pulse";
+                        heatIcon.className = "fa-solid fa-fire text-2xl text-neonRed mb-2 animate-bounce";
+                        heatGlow.className = "absolute inset-0 bg-neonRed opacity-10 animate-pulse";
+                    } else if (aclickCount > (total * 0.4) || aclickCount >= 5) {
+                        heatText.innerText = "YÜKSEK";
+                        heatText.className = "text-sm font-bold text-orange-400 tracking-wide z-10";
+                        heatIcon.className = "fa-solid fa-temperature-arrow-up text-2xl text-orange-400 mb-2";
+                        heatGlow.className = "absolute inset-0 bg-orange-400 opacity-10";
+                    } else {
+                        heatText.innerText = "STABİL";
+                        heatText.className = "text-sm font-bold text-neonGreen tracking-wide z-10";
+                        heatIcon.className = "fa-solid fa-temperature-half text-2xl text-neonGreen mb-2";
+                        heatGlow.className = "absolute inset-0 bg-neonGreen opacity-5";
+                    }
+                }
+
+                // Grafik Çizimi (SPA Bellek Sızıntısını Önleme Modülü)
+                const canvas = document.getElementById('signalChart');
+                if(!canvas) return;
+                
+                const ctx = canvas.getContext('2d');
+                
+                // Eskisini yokederek hatayı önle (Canvas is already in use fix)
+                if(window.signalChartInstance) {
+                    window.signalChartInstance.destroy();
+                }
+
+                const gradientBurgundy = ctx.createLinearGradient(0, 0, 0, 400);
+                gradientBurgundy.addColorStop(0, '#9A1750'); gradientBurgundy.addColorStop(1, '#E11D48');
+                
+                const gradientPurple = ctx.createLinearGradient(0, 0, 0, 400);
+                gradientPurple.addColorStop(0, '#6B2FA0'); gradientPurple.addColorStop(1, '#A855F7');
+                
+                const gradientBlue = ctx.createLinearGradient(0, 0, 0, 400);
+                gradientBlue.addColorStop(0, '#00E5FF'); gradientBlue.addColorStop(1, '#3B82F6');
+
+                window.signalChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels.length > 0 ? labels : ['Veri Yok'],
+                        datasets: [{
+                            data: values.length > 0 ? values : [1],
+                            backgroundColor: labels.length > 0 ? [gradientBurgundy, gradientPurple, gradientBlue, '#10B981', '#F59E0B'] : ['#1F2937'],
+                            borderWidth: 0,
+                            hoverOffset: 6,
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '80%', 
+                        plugins: { 
+                            legend: { 
+                                position: 'bottom',
+                                labels: { 
+                                    color: '#9CA3AF',
+                                    font: { family: "'JetBrains Mono', monospace", size: 10 },
+                                    usePointStyle: true,
+                                    padding: 15,
+                                    boxWidth: 8
+                                } 
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(11, 15, 26, 0.95)',
+                                titleColor: '#fff',
+                                bodyColor: '#fff',
+                                borderColor: 'rgba(0, 229, 255, 0.3)',
+                                borderWidth: 1,
+                                padding: 12,
+                                cornerRadius: 10
+                            }
+                        },
+                        layout: { padding: { bottom: 10 } },
+                        animation: { animateScale: true, animateRotate: true, duration: 1500, easing: 'easeOutQuart' }
+                    }
+                });
+
+                clearTimeout(logTimeout);
+                logIndex = 0;
+                setTimeout(addTerminalLog, 400);
+
+            } catch(e) {
+                console.error("Veri çekilemedi", e);
+                const centerTotalEl = document.getElementById('centerTotal');
+                if(centerTotalEl) centerTotalEl.innerText = "ERR";
+            }
+        }
+        
+        // SPA Uyumu: Yüklendiği an tetikle
+        loadStats();
+    </script>
+</body>
+</html>
