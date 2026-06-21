@@ -1,5 +1,5 @@
-Flask==3.0.2
-Flask-APScheduler==1.13.1
-pywebpush==1.14.0
-python-dotenv==1.0.1
-gunicorn==21.2.0
+Flask
+Flask-APScheduler
+pywebpush
+python-dotenv
+gunicorn
